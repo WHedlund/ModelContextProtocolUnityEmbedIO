@@ -14,8 +14,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 
+//namespace ModelContextProtocol.EmbedIO;
 
 public sealed class EmbedIOApiController : WebApiController
 {
@@ -25,6 +27,8 @@ public sealed class EmbedIOApiController : WebApiController
     /// </summary>
 
     private static readonly ConcurrentDictionary<string, EmbedIOTransport> Sessions = new();
+
+    private List<McpServerTool> tools;
 
     [Route(HttpVerbs.Get, "/sse")]
     public async Task Sse()
@@ -47,45 +51,11 @@ public sealed class EmbedIOApiController : WebApiController
         await response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(initEvent));
         await response.OutputStream.FlushAsync();
 
-        // Prepare EchoTool method
-        MethodInfo echoMethod = typeof(EchoTool).GetMethod("Echo", BindingFlags.Public | BindingFlags.Static);
-        if (echoMethod == null)
-        {
-            Debug.LogError("[MCP] Failed to retrieve Echo method.");
-            return;
-        }
-
-        var echoTool = McpServerTool.Create(echoMethod);
-        #pragma warning disable CS1998
         var serverOptions = new McpServerOptions
         {
             ServerInfo = new() { Name = "UnityEmbedIOServer", Version = "0.1" },
-            Capabilities = new ServerCapabilities
-            {
-                Tools = new ToolsCapability
-                {
-                    ListToolsHandler = async (ctx, ct) =>
-                    {
-                        Debug.Log("[MCP] Listing available tools.");
-                        return new ListToolsResult
-                        {
-                            Tools = new List<Tool> { echoTool.ProtocolTool }
-                        };
-                    },
-                    CallToolHandler = async (ctx, ct) =>
-                    {
-                        Debug.Log($"[MCP] Invoking tool: {ctx.Params?.Name}");
-                        return await echoTool.InvokeAsync(ctx, ct);
-                    }
-                }
-            }
+            Capabilities = new ServerCapabilities { Tools = CreateToolsCapability(tools) }
         };
-        #pragma warning restore CS1998
-
-
-
-        Debug.Log($"[MCP] Tool Registered: {echoTool.ProtocolTool.Name} — {echoTool.ProtocolTool.Description}");
-
 
         await using var mcpServer = McpServerFactory.Create(transport, serverOptions);
         Debug.Log("[MCP] MCP server running...");
@@ -94,6 +64,7 @@ public sealed class EmbedIOApiController : WebApiController
         Sessions.TryRemove(sessionId, out _);
         Debug.Log($"[MCP] Session {sessionId} ended.");
     }
+
 
     [Route(HttpVerbs.Post, "/message")]
     public async Task ReceiveMessage()
@@ -121,18 +92,56 @@ public sealed class EmbedIOApiController : WebApiController
         try
         {
             var message = JsonSerializer.Deserialize<JsonRpcMessage>(json, McpJsonUtilities.DefaultOptions);
-            if (message == null)
-                throw new JsonException("Parsed message is null.");
 
             await transport.OnMessageReceivedAsync(message, CancellationToken.None);
             HttpContext.Response.StatusCode = 202;
             await HttpContext.SendStringAsync("Accepted", "text/plain", Encoding.UTF8);
+
+            Debug.Log($"[MCP] Message for session {sessionId} processed successfully.");
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[MCP] Error handling message: {ex.Message}");
             HttpContext.Response.StatusCode = 500;
             await HttpContext.SendStringAsync("Server error", "text/plain", Encoding.UTF8);
+        }
+    }
+
+
+    public static ToolsCapability CreateToolsCapability(List<McpServerTool> tools)
+    {
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+        return new ToolsCapability
+        {
+            ListToolsHandler = async (ctx, ct) =>
+            {
+                return new ListToolsResult
+                {
+                    Tools = tools.ConvertAll(t => t.ProtocolTool)
+                };
+            },
+            CallToolHandler = async (ctx, ct) =>
+            {
+                var targetTool = tools.Find(t => t.ProtocolTool.Name == ctx.Params?.Name);
+                return targetTool is not null
+                    ? await targetTool.InvokeAsync(ctx, ct)
+                    : throw new InvalidOperationException($"Tool '{ctx.Params?.Name}' not found.");
+            }
+        };
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+    }
+
+    public EmbedIOApiController(Dictionary<object, List<MethodInfo>> services = null)
+    {
+        if (services == null || services.Count == 0)
+            return;
+
+        this.tools = new List<McpServerTool>();
+        foreach (var service in services)
+        {
+            foreach (var method in service.Value)
+            {
+                tools.Add(McpServerTool.Create(method, target: service.Key));
+            }
         }
     }
 }
