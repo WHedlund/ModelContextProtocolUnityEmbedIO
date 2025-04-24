@@ -57,6 +57,7 @@ public sealed class EmbedIOApiController : WebApiController
         }
 
         var echoTool = McpServerTool.Create(echoMethod);
+        #pragma warning disable CS1998
         var serverOptions = new McpServerOptions
         {
             ServerInfo = new() { Name = "UnityEmbedIOServer", Version = "0.1" },
@@ -80,6 +81,8 @@ public sealed class EmbedIOApiController : WebApiController
                 }
             }
         };
+        #pragma warning restore CS1998
+
 
 
         Debug.Log($"[MCP] Tool Registered: {echoTool.ProtocolTool.Name} — {echoTool.ProtocolTool.Description}");
