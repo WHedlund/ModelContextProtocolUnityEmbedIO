@@ -9,7 +9,6 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using UnityEngine;
 
-//namespace ModelContextProtocol.EmbedIO;
 public class EmbedIOTransport : ITransport
 {
     /// <summary>

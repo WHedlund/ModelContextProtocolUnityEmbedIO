@@ -3,7 +3,6 @@ using EmbedIO.WebApi;
 using UnityEngine;
 using System.Threading;
 
-//namespace ModelContextProtocol.EmbedIO;
 
 public class EmbedIOServerHost : MonoBehaviour
 {

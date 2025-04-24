@@ -16,7 +16,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-//namespace ModelContextProtocol.EmbedIO;
 
 public sealed class EmbedIOApiController : WebApiController
 {

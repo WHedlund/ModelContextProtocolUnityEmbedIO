@@ -2,7 +2,6 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using UnityEngine;
 
-//namespace ModelContextProtocol.EmbedIO.Tools;
 
 [McpServerToolType]
 public static class EchoTool
