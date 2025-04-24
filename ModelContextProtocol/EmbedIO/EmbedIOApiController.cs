@@ -28,7 +28,8 @@ public sealed class EmbedIOApiController : WebApiController
 
     private static readonly ConcurrentDictionary<string, EmbedIOTransport> Sessions = new();
 
-    private List<McpServerTool> tools;
+    private readonly Func<Dictionary<object, List<MethodInfo>>> _getServices;
+    private readonly List<McpServerTool> tools;
 
     [Route(HttpVerbs.Get, "/sse")]
     public async Task Sse()
@@ -97,7 +98,7 @@ public sealed class EmbedIOApiController : WebApiController
             HttpContext.Response.StatusCode = 202;
             await HttpContext.SendStringAsync("Accepted", "text/plain", Encoding.UTF8);
 
-            Debug.Log($"[MCP] Message for session {sessionId} processed successfully.");
+            Debug.Log($"[MCP] Message for session {sessionId} queued for processing.");
         }
         catch (Exception ex)
         {

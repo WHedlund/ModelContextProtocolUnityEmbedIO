@@ -10,7 +10,7 @@ This package enables Unity projects to run a fully functional [Model Context Pro
 - Native Unity integration for MCP servers.
 - Uses EmbedIO for lightweight HTTP/SSE transport.
 - Runs the HTTP server in a **separate thread** to avoid blocking the Unity main thread.
-- (Planned) A MainThreadDispatcher may be added for safe Unity object interaction.
+- A MainThreadDispatcher may be added for safe Unity object interaction.
 - Automatic tool discovery: Finds tools on the same GameObject (see `EchoToolWithInstance`).
 - Updated to match latest MCP type/name changes.
 

@@ -9,13 +9,10 @@ using ModelContextProtocol.Protocol.Types;
 
 public class EmbedIOServerHost : MonoBehaviour
 {
-    /// <summary>
-    /// Initializes and hosts the EmbedIO HTTP server for handling MCP sessions in Unity.
-    /// Registers API endpoints and manages server lifecycle.
-    /// </summary>
-
     private WebServer _server;
     private CancellationTokenSource _cts;
+
+    private static Dictionary<object, List<MethodInfo>> _cachedServiceDict;
 
     void Start()
     {
@@ -24,14 +21,22 @@ public class EmbedIOServerHost : MonoBehaviour
 
         Debug.Log("[MCP] Initializing EmbedIO server...");
 
-        var serviceDict = FindTaggedInstancesAndMethods(this.gameObject);
+        if (_cachedServiceDict == null)
+        {
+            _cachedServiceDict = FindTaggedInstancesAndMethods(gameObject);
+            Debug.Log("[MCP] Service dictionary created.");
+        }
+        else
+        {
+            Debug.Log("[MCP] Using cached service dictionary.");
+        }
 
         _server = new WebServer(o => o
                 .WithUrlPrefix(url)
                 .WithMode(HttpListenerMode.EmbedIO))
             .WithLocalSessionManager()
-        .WithWebApi("/api", m => m
-                .WithController(() => new EmbedIOApiController(serviceDict)));
+            .WithWebApi("/api", m => m
+                .WithController(() => new EmbedIOApiController(_cachedServiceDict)));
 
         _server.RunAsync(_cts.Token);
         Debug.Log("[MCP] EmbedIO Server running at " + url);
@@ -45,8 +50,6 @@ public class EmbedIOServerHost : MonoBehaviour
         Debug.Log("[MCP] Server stopped.");
     }
 
-
-
     Dictionary<object, List<MethodInfo>> FindTaggedInstancesAndMethods(GameObject root)
     {
         var result = new Dictionary<object, List<MethodInfo>>();
@@ -54,7 +57,7 @@ public class EmbedIOServerHost : MonoBehaviour
 
         foreach (var comp in components)
         {
-            if (comp == null) continue; // skip destroyed
+            if (comp == null) continue;
             var type = comp.GetType();
 
             if (type.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
