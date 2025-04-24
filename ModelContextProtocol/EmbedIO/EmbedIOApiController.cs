@@ -103,6 +103,7 @@ public sealed class EmbedIOApiController : WebApiController
         {
             HttpContext.Response.StatusCode = 500;
             await HttpContext.SendStringAsync("Server error", "text/plain", Encoding.UTF8);
+            Debug.LogWarning($"[MCP] Server error: {ex.ToString()}");
         }
     }
 
